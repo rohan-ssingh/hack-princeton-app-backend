@@ -1,38 +1,36 @@
+# --- Core web framework ---
 fastapi
 uvicorn
-langchain
-faiss-cpu
-openai
+python-dotenv
 pydantic
 requests
-python-dotenv
-langchain-community
-pypdf
-fastapi
-uvicorn
 
 # --- LangChain ecosystem ---
 langchain
 langchain-core
 langchain-community
+langchain-text-splitters
 langgraph
 langsmith
 
-# --- Vector stores and AI tools ---
-faiss-cpu
+# --- Model providers & embeddings ---
 openai
+langchain-openai
+langchain-google-genai
 
-# --- Data + utility libraries ---
+# --- Vector stores & retrieval ---
+faiss-cpu
+
+# --- Document parsing & processing ---
+pypdf
+tqdm
+PyYAML
+
+# --- Async / utility dependencies ---
+httpx
+anyio
+tenacity
+
+# --- Data handling ---
 numpy
 pandas
-requests
-tqdm
-python-dotenv
-pydantic
-PyYAML
-pypdf
-
-# --- Optional concurrency and async dependencies (used by FastAPI / LangChain) ---
-httpx
-tenacity
-anyio
