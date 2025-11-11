@@ -28,6 +28,7 @@ origins = [
     "http://localhost",
     "http://localhost:3000",
     "http://localhost:8080",
+    "https://hack-princeton-app.vercel.app",
 ]
 
 app.add_middleware(
