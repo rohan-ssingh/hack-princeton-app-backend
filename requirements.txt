@@ -8,3 +8,31 @@ requests
 python-dotenv
 langchain-community
 pypdf
+fastapi
+uvicorn
+
+# --- LangChain ecosystem ---
+langchain
+langchain-core
+langchain-community
+langgraph
+langsmith
+
+# --- Vector stores and AI tools ---
+faiss-cpu
+openai
+
+# --- Data + utility libraries ---
+numpy
+pandas
+requests
+tqdm
+python-dotenv
+pydantic
+PyYAML
+pypdf
+
+# --- Optional concurrency and async dependencies (used by FastAPI / LangChain) ---
+httpx
+tenacity
+anyio
