@@ -1,0 +1,36 @@
+# --- Core web framework ---
+fastapi
+uvicorn
+python-dotenv
+pydantic
+requests
+
+# --- LangChain ecosystem ---
+langchain
+langchain-core
+langchain-community
+langchain-text-splitters
+langgraph
+langsmith
+
+# --- Model providers & embeddings ---
+openai
+langchain-openai
+langchain-google-genai
+
+# --- Vector stores & retrieval ---
+faiss-cpu
+
+# --- Document parsing & processing ---
+pypdf
+tqdm
+PyYAML
+
+# --- Async / utility dependencies ---
+httpx
+anyio
+tenacity
+
+# --- Data handling ---
+numpy
+pandas
