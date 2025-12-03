@@ -421,8 +421,13 @@ class PDF:
 def make_rag_tool(storage: Storage):
     @tool
     def rag(question: str, schema: Optional[BaseModel] = None, date_range: Optional[List[str]] = None):
+        """
+        Retrieve relevant documents using FAISS and produce a RAG answer.
+        Supports optional structured output schema and date filtering.
+        """
         payload = RAGToolInput(question=question, schema=schema, date_range=date_range)
         return storage.rag(**payload.dict())
 
     rag.__name__ = "rag"
     return rag
+
