@@ -137,12 +137,12 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[],
-    allow_origin_regex=".*",
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 BASE_DIR = Path(__file__).resolve().parent
 
