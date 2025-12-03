@@ -216,6 +216,8 @@ def make_rag_tool(storage: Storage):
     return rag
 """
 
+
+
 import os
 import json
 import pickle
@@ -254,6 +256,9 @@ google_credentials = service_account.Credentials.from_service_account_info(
     scopes=["https://www.googleapis.com/auth/cloud-platform"],
 )
 
+print("DEBUG >>> env present:", "GOOGLE_APPLICATION_CREDENTIALS_JSON" in os.environ)
+print("DEBUG >>> raw length:", len(os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or "0"))
+print("DEBUG >>> raw preview:", (os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or "")[:80])
 
 # ----------------------------------------
 # GCS UTIL FUNCTIONS
