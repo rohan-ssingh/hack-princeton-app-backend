@@ -285,28 +285,41 @@ def gcs_download(path: str) -> bytes:
 # LOAD FAISS INDEX + METADATA FROM GCS
 # ----------------------------------------
 def load_faiss_from_gcs():
+    import faiss
+    import pickle
+    from tempfile import NamedTemporaryFile
+
     index_path = os.getenv("GCS_FAISS_INDEX_PATH")
     metadata_path = os.getenv("GCS_FAISS_PKL_PATH")
 
     if not index_path or not metadata_path:
         raise RuntimeError("Missing GCS_FAISS_INDEX_PATH or GCS_FAISS_PKL_PATH")
 
+    # ---- Download files ----
     raw_index = gcs_download(index_path)
     raw_meta = gcs_download(metadata_path)
 
-    index = faiss.deserialize_index(raw_index)
-    metadata = pickle.loads(raw_meta)
+    # ---- Write FAISS index to disk (FAISS requires actual file) ----
+    tmp_index = NamedTemporaryFile(delete=False)
+    tmp_index.write(raw_index)
+    tmp_index.flush()
 
-    print("[FAISS] Loaded index + metadata from GCS")
+    # ---- Load index using faiss.read_index ----
+    index = faiss.read_index(tmp_index.name)
 
+    # ---- Load metadata ----
+    meta = pickle.loads(raw_meta)
+
+    # ---- Rebuild FAISS vectorstore exactly like LangChain does ----
     vs = FAISS(
         embedding_function=embeddings,
         index=index,
-        docstore=metadata["docstore"],
-        index_to_docstore_id=metadata["index_to_docstore_id"],
+        docstore=meta["docstore"],
+        index_to_docstore_id=meta["index_to_docstore_id"],
     )
 
     return vs
+
 
 
 # ====================================================
