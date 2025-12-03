@@ -132,7 +132,7 @@ origins = [
     "http://localhost:3000",
     "http://localhost:8080",
     "https://hack-princeton-app.vercel.app",
-    "https://hack-princeton-app-of3y-hcuu2ttro-rohan-ssinghs-projects.vercel.app",
+    "https://hack-princeton-app-of3y-gs9w4gnfc-rohan-ssinghs-projects.vercel.app",
 ]
 
 app.add_middleware(
