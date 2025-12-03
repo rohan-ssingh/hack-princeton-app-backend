@@ -310,6 +310,13 @@ def load_faiss_from_gcs():
     # ---- Load metadata ----
     meta = pickle.loads(raw_meta)
 
+    print("DEBUG >>> meta type:", type(meta))
+
+    if isinstance(meta, dict):
+        print("DEBUG >>> dict keys:", list(meta.keys()))
+    else:
+        print("DEBUG >>> meta preview:", meta)
+
     # ---- Rebuild FAISS vectorstore exactly like LangChain does ----
     vs = FAISS(
         embedding_function=embeddings,
