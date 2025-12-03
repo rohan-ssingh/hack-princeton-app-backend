@@ -4,6 +4,8 @@ uvicorn
 python-dotenv
 pydantic
 requests
+google-cloud-storage
+
 
 # --- LangChain ecosystem ---
 langchain
