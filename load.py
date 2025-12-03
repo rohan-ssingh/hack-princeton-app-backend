@@ -307,24 +307,28 @@ def load_faiss_from_gcs():
     # ---- Load index using faiss.read_index ----
     index = faiss.read_index(tmp_index.name)
 
-    # ---- Load metadata ----
     meta = pickle.loads(raw_meta)
 
-    print("DEBUG >>> meta type:", type(meta))
-
+    # --- AUTO-DETECT FORMAT ---
     if isinstance(meta, dict):
-        print("DEBUG >>> dict keys:", list(meta.keys()))
-    else:
-        print("DEBUG >>> meta preview:", meta)
+        print("DEBUG: Metadata format=dict")
+        docstore = meta["docstore"]
+        index_to_docstore_id = meta["index_to_docstore_id"]
 
-    # ---- Rebuild FAISS vectorstore exactly like LangChain does ----
+    elif isinstance(meta, tuple) and len(meta) == 2:
+        print("DEBUG: Metadata format=tuple(len=2)")
+        docstore, index_to_docstore_id = meta
+
+    else:
+        raise ValueError(f"Unrecognized FAISS metadata format: {type(meta)}")
+
+    # Build vectorstore
     vs = FAISS(
         embedding_function=embeddings,
         index=index,
-        docstore=meta["docstore"],
-        index_to_docstore_id=meta["index_to_docstore_id"],
+        docstore=docstore,
+        index_to_docstore_id=index_to_docstore_id,
     )
-
     return vs
 
 
