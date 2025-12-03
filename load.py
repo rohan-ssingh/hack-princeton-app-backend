@@ -260,7 +260,11 @@ google_credentials = service_account.Credentials.from_service_account_info(
 # ----------------------------------------
 def gcs_download(path: str) -> bytes:
     """Download a file from GCS into memory."""
-    client = storage.Client(credentials=google_credentials)
+    client = storage.Client(
+        project=creds_dict["project_id"],
+        credentials=google_credentials,
+    )
+
     bucket_name = os.getenv("GCS_BUCKET_NAME")
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(path)
@@ -269,6 +273,7 @@ def gcs_download(path: str) -> bytes:
     data = blob.download_as_bytes()
     print(f"[GCS] Downloaded {len(data)/1_000_000:.2f} MB")
     return data
+
 
 
 # ----------------------------------------
