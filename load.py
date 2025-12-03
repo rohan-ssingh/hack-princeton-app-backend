@@ -1,3 +1,4 @@
+"""
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.documents.base import Blob
@@ -209,6 +210,184 @@ def make_rag_tool(storage: Storage):
             schema=schema,
             date_range=date_range,
         )
+        return storage.rag(**payload.dict())
+
+    rag.__name__ = "rag"
+    return rag
+"""
+
+import os
+import json
+import pickle
+import warnings
+from pathlib import Path
+from datetime import datetime
+from typing import Optional, IO
+from typing_extensions import List, TypedDict
+
+import faiss
+from google.cloud import storage
+from google.oauth2 import service_account
+from pydantic import BaseModel
+from pypdf import PdfReader
+from tqdm import tqdm
+from uuid import uuid4
+
+from langchain_community.vectorstores import FAISS
+from langchain_core.documents import Document
+from langchain_core.tools import tool
+from langchain_openai import OpenAIEmbeddings
+
+from llm import llm, embeddings, text_splitter, prompt
+
+
+# ----------------------------------------
+# GOOGLE SERVICE ACCOUNT CREDENTIALS
+# ----------------------------------------
+creds_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+if not creds_json:
+    raise RuntimeError("Missing GOOGLE_APPLICATION_CREDENTIALS_JSON")
+
+creds_dict = json.loads(creds_json)
+google_credentials = service_account.Credentials.from_service_account_info(
+    creds_dict,
+    scopes=["https://www.googleapis.com/auth/cloud-platform"],
+)
+
+
+# ----------------------------------------
+# GCS UTIL FUNCTIONS
+# ----------------------------------------
+def gcs_download(path: str) -> bytes:
+    """Download a file from GCS into memory."""
+    client = storage.Client(credentials=google_credentials)
+    bucket_name = os.getenv("GCS_BUCKET_NAME")
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(path)
+
+    print(f"[GCS] Downloading gs://{bucket_name}/{path}")
+    data = blob.download_as_bytes()
+    print(f"[GCS] Downloaded {len(data)/1_000_000:.2f} MB")
+    return data
+
+
+# ----------------------------------------
+# LOAD FAISS INDEX + METADATA FROM GCS
+# ----------------------------------------
+def load_faiss_from_gcs():
+    index_path = os.getenv("GCS_FAISS_INDEX_PATH")
+    metadata_path = os.getenv("GCS_FAISS_PKL_PATH")
+
+    if not index_path or not metadata_path:
+        raise RuntimeError("Missing GCS_FAISS_INDEX_PATH or GCS_FAISS_PKL_PATH")
+
+    raw_index = gcs_download(index_path)
+    raw_meta = gcs_download(metadata_path)
+
+    index = faiss.deserialize_index(raw_index)
+    metadata = pickle.loads(raw_meta)
+
+    print("[FAISS] Loaded index + metadata from GCS")
+
+    vs = FAISS(
+        embedding_function=embeddings,
+        index=index,
+        docstore=metadata["docstore"],
+        index_to_docstore_id=metadata["index_to_docstore_id"],
+    )
+
+    return vs
+
+
+# ====================================================
+# Storage / RAG Logic — KEEPING YOUR ORIGINAL STRUCTURE
+# ====================================================
+
+class Retrieval(TypedDict):
+    question: str
+    documents: List[Document]
+    response: BaseModel | str
+
+
+class RAGToolInput(BaseModel):
+    question: str
+    schema: Optional[BaseModel] = None
+    date_range: Optional[List[str]] = None
+
+
+class Storage:
+    """Your existing Storage class."""
+
+    def __init__(self):
+        self.vector_store = load_faiss_from_gcs()
+
+    def retrieve(self, query: str):
+        return self.vector_store.similarity_search(query)
+
+    def rag(self, question: str, schema: Optional[BaseModel] = None, date_range: Optional[List[str]] = None):
+
+        docs = self.vector_store.similarity_search(question, k=15)
+
+        # Your existing date filtering logic
+        if date_range and len(date_range) == 2:
+            start, end = date_range
+            start = datetime.strptime(start, "%Y-%m-%d").date() if start else None
+            end = datetime.strptime(end, "%Y-%m-%d").date() if end else None
+
+            filtered = []
+            for doc in docs:
+                dt = doc.metadata.get("journal_date")
+                if isinstance(dt, str):
+                    try:
+                        dt = datetime.strptime(dt, "%Y-%m-%d").date()
+                    except:
+                        continue
+                if dt and (not start or dt >= start) and (not end or dt <= end):
+                    filtered.append(doc)
+            docs = filtered
+
+        ctx = "\n\n".join(d.page_content for d in docs)
+        msgs = prompt.invoke({"question": question, "context": ctx})
+
+        if schema:
+            resp = llm.with_structured_output(schema).invoke(msgs)
+        else:
+            resp = llm.invoke(msgs).content
+
+        return Retrieval(question=question, documents=docs, response=resp)
+
+    def add_documents(self, docs: List[Document]):
+        raise NotImplementedError("Not adding docs on Railway environment.")
+
+
+# ===================================
+# PDF document loader (unchanged)
+# ===================================
+class PDF:
+    def __init__(self, pdf_file: str | IO, storage: Storage, metadata: dict):
+
+        self.storage = storage
+        document = self._load_documents(pdf_file)
+        document.metadata.update(metadata)
+
+        splits = text_splitter.split_documents([document])
+        self.storage.add_documents(splits)
+
+    def _load_documents(self, pdf_file: str | IO) -> Document:
+        content = ""
+        reader = PdfReader(pdf_file)
+        for p in tqdm(reader.pages, desc="Processing PDF"):
+            content += p.extract_text() + "\n"
+        return Document(page_content=content, metadata={"source": pdf_file}, id=str(uuid4()))
+
+
+# ========================================================
+# MAKE RAG TOOL — SAME API EXPECTED BY chat_query.py
+# ========================================================
+def make_rag_tool(storage: Storage):
+    @tool
+    def rag(question: str, schema: Optional[BaseModel] = None, date_range: Optional[List[str]] = None):
+        payload = RAGToolInput(question=question, schema=schema, date_range=date_range)
         return storage.rag(**payload.dict())
 
     rag.__name__ = "rag"
